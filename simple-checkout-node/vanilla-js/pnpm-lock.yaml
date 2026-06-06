@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@mopay/node-sdk':
-        specifier: ^0.1.3
-        version: 0.1.3
+        specifier: ^0.1.6
+        version: 0.1.6
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -30,8 +30,8 @@ importers:
 
 packages:
 
-  '@mopay/node-sdk@0.1.3':
-    resolution: {integrity: sha512-l1Q/SJRvSmfIqHLSZNDdGoh0u2iLh22eAEgtDfv84iAwkSIvTMjUp4/w/tooj42SxP4NW/JX/ZKj67BfdkFMTg==}
+  '@mopay/node-sdk@0.1.6':
+    resolution: {integrity: sha512-Mf+7m/8/zOufcGmGbklDlNh7aeviPRRmS+gGmPbg094wOzsjF2q+GmFYj811qM7LVWCeQQqBGnpdZPlHijL/YQ==}
     engines: {node: '>=18'}
 
   '@types/body-parser@1.19.6':
@@ -336,7 +336,7 @@ packages:
 
 snapshots:
 
-  '@mopay/node-sdk@0.1.3': {}
+  '@mopay/node-sdk@0.1.6': {}
 
   '@types/body-parser@1.19.6':
     dependencies:
