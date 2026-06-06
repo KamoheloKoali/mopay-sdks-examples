@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MoPay Checkout Example</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="checkout-shell">
+      <section class="checkout-panel">
+        <div class="brand">
+          <div class="mark">M</div>
+          <div>
+            <p>MoPay</p>
+            <span>Hosted checkout</span>
+          </div>
+        </div>
+
+        <form id="checkout-form" class="payment-form" method="post">
+          <label>
+            Amount
+            <input id="amount" name="amount" value="100.00" inputmode="decimal" />
+          </label>
+
+          <label>
+            Reference
+            <input id="reference" name="reference" value="ORDER12345" />
+          </label>
+
+          <label>
+            Customer email
+            <input id="customerEmail" name="customerEmail" value="customer@example.com" type="email" />
+          </label>
+
+          <div class="actions">
+            <button type="button" id="pay-now">Pay with MoPay</button>
+          </div>
+        </form>
+
+        <div class="lookup">
+          <label>
+            Session ID
+            <input id="sessionId" value="" placeholder="MOP_demo_ORDER12345" />
+          </label>
+          <button type="button" id="check-status">Check transaction</button>
+        </div>
+
+        <output id="status" class="status">Ready</output>
+
+        <section id="transaction-details" class="transaction-details" hidden>
+          <div class="details-header">
+            <p>Transaction details</p>
+            <span>Verified from MoPay</span>
+          </div>
+          <dl id="transaction-summary" class="summary-grid"></dl>
+          <pre id="transaction-json" class="json-view"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

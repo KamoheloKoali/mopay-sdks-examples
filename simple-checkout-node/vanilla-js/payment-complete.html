@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MoPay Payment Complete</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="completion-shell">
+      <section class="completion-panel">
+        <div class="brand compact">
+          <div class="mark">M</div>
+          <div>
+            <p>MoPay</p>
+            <span>Payment returned</span>
+          </div>
+        </div>
+        <output id="completion-status" class="status">Confirming payment status...</output>
+        <div id="bridge-state" class="bridge-state">Preparing checkout bridge...</div>
+        <section id="transaction-details" class="transaction-details" hidden>
+          <div class="details-header">
+            <p>Transaction details</p>
+            <span>Verified from MoPay</span>
+          </div>
+          <dl id="transaction-summary" class="summary-grid"></dl>
+          <pre id="transaction-json" class="json-view"></pre>
+        </section>
+        <button type="button" id="close-completion">Close checkout</button>
+      </section>
+    </main>
+
+    <script type="module">
+      import { MoPayCheckout } from "/sdk/index.js";
+
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get("status") || "pending";
+      const sessionId = params.get("sessionId") || "";
+      const redirectTo = `${window.location.origin}/payment-complete${window.location.search}`;
+      const details = document.querySelector("#transaction-details");
+      const summary = document.querySelector("#transaction-summary");
+      const json = document.querySelector("#transaction-json");
+      const bridgeState = document.querySelector("#bridge-state");
+      const completionStatus = document.querySelector("#completion-status");
+
+      completionStatus.value = sessionId
+        ? `Returned ${status} for ${sessionId}`
+        : `Returned ${status}`;
+
+      const bridgeMessage = MoPayCheckout.completeRedirect({ redirectTo });
+      bridgeState.textContent = bridgeMessage.sessionId
+        ? `SDK bridge notified for ${bridgeMessage.sessionId}. Loading verified transaction details...`
+        : "SDK bridge notified. Loading verified transaction details...";
+
+      if (sessionId) {
+        loadTransaction(sessionId);
+      } else {
+        bridgeState.textContent = "SDK bridge notified, but no session ID was returned.";
+      }
+
+      document.querySelector("#close-completion").addEventListener("click", () => {
+        MoPayCheckout.completeRedirect({
+          type: "mopay.checkout.close",
+          redirectTo,
+          closeWindow: true,
+        });
+      });
+
+      async function loadTransaction(sessionId) {
+        try {
+          const response = await fetch(`/api/mopay-session/${encodeURIComponent(sessionId)}`);
+          const transaction = await response.json();
+
+          if (!response.ok || transaction.success === false) {
+            throw new Error(transaction.error || transaction.message || `Request failed with ${response.status}`);
+          }
+
+          renderTransaction(transaction);
+        } catch (error) {
+          completionStatus.value = error instanceof Error
+            ? error.message
+            : "Could not retrieve transaction";
+          bridgeState.textContent = "SDK bridge was notified, but transaction verification failed.";
+        }
+      }
+
+      function renderTransaction(transaction) {
+        const session = transaction.session || {};
+        const rows = [
+          ["Session ID", session.sessionId],
+          ["Reference", session.reference],
+          ["Amount", session.amount],
+          ["Session status", session.status],
+          ["Transaction status", session.transactionStatus],
+          ["Transaction ID", session.transactionId],
+          ["Payment method", session.selectedPaymentMethod || session.paymentMethod],
+          ["Created", session.createdAt],
+          ["Completed", session.completedAt],
+        ];
+
+        summary.replaceChildren(...rows
+          .filter(([, value]) => value !== undefined && value !== null && value !== "")
+          .flatMap(([label, value]) => {
+            const term = document.createElement("dt");
+            const description = document.createElement("dd");
+            term.textContent = label;
+            description.textContent = String(value);
+            return [term, description];
+          }));
+
+        json.textContent = JSON.stringify(transaction, null, 2);
+        details.hidden = false;
+        bridgeState.textContent = "SDK bridge notified. Verified transaction details are shown below.";
+      }
+    </script>
+  </body>
+</html>
