@@ -1,6 +1,6 @@
 # MoPay Simple Checkout Node Example
 
-This example shows a merchant-owned Express backend creating a MoPay checkout session with `@mopay/node-sdk`, a browser page opening the hosted checkout in the SDK dialog, and a merchant completion page closing the dialog after MoPay redirects back.
+This example shows a merchant-owned Express backend creating a MoPay checkout session with `@mopay/node-sdk`, a browser page opening the hosted checkout in the SDK dialog, and a small merchant redirect bridge closing the dialog after MoPay redirects back. The customer stays on the original checkout page, where the transaction is verified and displayed.
 
 ## Run
 
@@ -66,6 +66,21 @@ Restart `pnpm dev` after editing `.env`. If MoPay enforces allowed origins for i
 
 In production, use your real public HTTPS merchant domain.
 
+## Checkout Flow
+
+The example uses the smooth inline flow:
+
+1. The backend creates a MoPay checkout session and passes a merchant `redirectUrl`.
+2. The browser opens the returned `checkoutUrl` in the SDK dialog.
+3. MoPay, 3DS, or the bank flow eventually redirects the iframe/popup to `/payment-complete`.
+4. `/payment-complete` is only a bridge page. It calls `MoPayCheckout.completeRedirect({ closeWindow: true })`.
+5. The SDK receives the trusted bridge message, closes the dialog, and stays on the original page.
+6. The original page calls `/api/mopay-session/:sessionId` to verify the transaction from the merchant backend and render the final details.
+
+This avoids the messy double-navigation where the iframe first loads the completion page and then the top-level merchant page navigates to the same completion page again.
+
+`redirectAfterClose` is intentionally not used here. Add it only if your product really wants the top-level merchant page to navigate after the checkout dialog closes.
+
 ## SDK Methods Used
 
 ### `new MoPay({ apiKey, baseUrl })`
@@ -86,7 +101,6 @@ Important options in this example:
 - `checkoutToken`: fallback if the API returns a token instead of a URL.
 - `allowedOrigins`: allows trusted messages from the merchant completion page.
 - `closeOnRedirect`: closes the dialog when the merchant completion page sends a redirect message.
-- `redirectAfterClose`: redirects the main merchant page after the dialog closes.
 - `onSuccess`, `onFailed`, `onCancel`: UI feedback only.
 - `onClose`: verifies the transaction after the checkout closes.
 
@@ -98,9 +112,11 @@ That message lets the SDK:
 
 - close the iframe dialog or popup,
 - call the relevant UI callback,
-- optionally redirect the main merchant page using `redirectTo`.
+- leave the original merchant page in place so it can verify and render the transaction.
 
 The SDK cannot inspect or intercept cross-origin MoPay, 3DS, or bank pages before they reach your merchant `redirectUrl`. The bridge page is what makes auto-close possible safely.
+
+If MoPay later supports a no-redirect browser event from the hosted checkout page itself, the same SDK listener can close the dialog from a trusted terminal `postMessage`. Until then, the redirect bridge is the reliable browser-safe handoff.
 
 ### `mopay.getTransaction(sessionId)`
 

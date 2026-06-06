@@ -31,6 +31,9 @@ const transactionDetails = queryRequired<HTMLElement>("#transaction-details");
 const transactionSummary = queryRequired<HTMLDListElement>("#transaction-summary");
 const transactionJson = queryRequired<HTMLPreElement>("#transaction-json");
 
+let verificationSessionId: string | undefined;
+let verificationStarted = false;
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   await startCheckout();
@@ -46,6 +49,8 @@ checkStatusButton.addEventListener("click", async () => {
 
 async function startCheckout(): Promise<void> {
   setBusy(true);
+  verificationSessionId = undefined;
+  verificationStarted = false;
   setStatus("Creating checkout session on merchant backend...");
 
   try {
@@ -61,26 +66,30 @@ async function startCheckout(): Promise<void> {
       height: 418.4,
       resizable: false,
       closeOnRedirect: true,
-      redirectAfterClose: true,
       onOpen: () => setStatus(`Checkout opened for ${session.reference}`),
       onMessage: (message: CheckoutMessage) => {
         console.log("MoPay checkout message", message);
+        verificationSessionId = message.sessionId || session.sessionId;
+
+        if (message.type === "mopay.checkout.redirect") {
+          setStatus("Checkout returned to merchant bridge. Closing dialog...");
+        }
       },
-      onSuccess: async (message: CheckoutMessage) => {
+      onSuccess: (message: CheckoutMessage) => {
+        verificationSessionId = message.sessionId || session.sessionId;
         setStatus(`Payment success callback received for ${message.sessionId || session.sessionId}`);
-        await checkTransaction(message.sessionId || session.sessionId);
       },
-      onFailed: async (message: CheckoutMessage) => {
+      onFailed: (message: CheckoutMessage) => {
+        verificationSessionId = message.sessionId || session.sessionId;
         setStatus(`Payment failed: ${message.error || message.sessionId || session.sessionId}`);
-        await checkTransaction(message.sessionId || session.sessionId);
       },
-      onCancel: async (message: CheckoutMessage) => {
+      onCancel: (message: CheckoutMessage) => {
+        verificationSessionId = message.sessionId || session.sessionId;
         setStatus("Payment cancelled");
-        await checkTransaction(message.sessionId || session.sessionId);
       },
       onClose: async () => {
-        setStatus("Checkout closed. Verifying transaction...");
-        await checkTransaction(session.sessionId);
+        setStatus("Checkout closed. Verifying transaction on merchant backend...");
+        await verifyCheckoutResult(verificationSessionId || session.sessionId);
         setBusy(false);
       },
     });
@@ -88,6 +97,15 @@ async function startCheckout(): Promise<void> {
     setStatus(error instanceof Error ? error.message : "Checkout failed");
     setBusy(false);
   }
+}
+
+async function verifyCheckoutResult(sessionId: string): Promise<void> {
+  if (verificationStarted) {
+    return;
+  }
+
+  verificationStarted = true;
+  await checkTransaction(sessionId);
 }
 
 async function createCheckoutSession(order: PaymentFormPayload): Promise<CheckoutSessionPayload> {

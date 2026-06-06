@@ -131,7 +131,7 @@ button[type="submit"] {
   color: #111827;
 }
 
-#close-completion {
+#return-home {
   width: calc(100% - 44px);
   margin: 0 22px 22px;
   background: #111827;
